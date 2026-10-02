@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+  (function() {
+    var GA_ID = 'G-7DJLHB1FQ1';
+    var isLocalDev = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+    if (isLocalDev) return;
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+    document.addEventListener('click', function(e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href*="booth.pm"]') : null;
+      if (!a) return;
+      gtag('event', 'booth_click', { link_url: a.href, link_id: a.id || '', link_text: (a.textContent || '').trim().slice(0, 40) });
+    });
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="小説の本文を貼り付けると、文字数・原稿用紙(400字詰め)換算の枚数・同人誌にしたときのページ数を計算。文庫・A5二段組・新書の版面に対応、ルビやpixivのタグも除いて数えられる無料ツール。">
+<link rel="canonical" href="https://uuhai0625.github.io/genko-page-calc/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="原稿用紙換算・同人小説ページ数計算ツール(文庫・A5二段組・新書)">
+<meta property="og:description" content="小説の本文を貼り付けると、文字数・原稿用紙(400字詰め)換算の枚数・同人誌にしたときのページ数を計算。文庫・A5二段組・新書の版面に対応、ルビやpixivのタグも除いて数えられる無料ツール。">
+<meta property="og:url" content="https://uuhai0625.github.io/genko-page-calc/">
+<title>原稿用紙換算・同人小説ページ数計算ツール(文庫・A5二段組・新書)</title>
+<style>
+  :root {
+    --bg: #f4f4ef;
+    --panel: #ffffff;
+    --border: #dfdccf;
+    --field-border: #8a877a;
+    --text: #2a2c2a;
+    --muted: #5f6159;
+    --accent: #2f5d50;
+    --accent-dark: #22463c;
+    --soft: #edf3f0;
+    --warn-bg: #fff4e0;
+    --warn-text: #7a4b00;
+    --err-bg: #fdecec;
+    --err-text: #9b1c1c;
+    --locked: #b0ae9f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  header {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    padding: 24px 20px 18px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 6px; font-size: 1.4rem; }
+  header p { margin: 0; opacity: .94; font-size: .9rem; }
+  main { max-width: 860px; margin: 0 auto; padding: 22px 16px 50px; }
+  section.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  section.card h2 { margin: 0 0 6px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .desc { color: var(--muted); font-size: .84rem; margin: 0 0 12px; }
+  .badge { display: inline-block; font-size: .7rem; padding: 2px 8px; border-radius: 999px; background: #fff1cc; color: #7a5600; font-weight: bold; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .hidden { display: none !important; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs label { flex: 1; min-width: 140px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--field-border); border-radius: 8px; padding: 8px 10px; font-size: .88rem; cursor: pointer; background: #fffefb; }
+  .tabs label.on { border-color: var(--accent); background: var(--soft); font-weight: bold; }
+  .tabs label:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea#in-text {
+    width: 100%; min-height: 220px; padding: 10px 12px; resize: vertical;
+    border: 1px solid var(--field-border); border-radius: 8px; background: #fffefb; color: var(--text);
+    font-size: 1rem; line-height: 1.8; font-family: inherit;
+  }
+  .quick { margin-top: 8px; font-size: .86rem; background: var(--soft); border-radius: 8px; padding: 8px 12px; }
+  .quick a { color: var(--accent-dark); font-weight: bold; }
+  label.field { display: block; margin-bottom: 12px; }
+  .lbl { font-size: .85rem; font-weight: bold; display: block; }
+  .hint { font-size: .75rem; color: var(--muted); font-weight: normal; display: block; margin-top: 2px; }
+  label.field input:not([type=checkbox]), label.field select {
+    width: 100%; margin-top: 5px; padding: 9px 10px; min-height: 44px;
+    border: 1px solid var(--field-border); border-radius: 8px;
+    font-size: 1rem; font-family: inherit; background: #fffefb; color: var(--text);
+  }
+  label.check { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; padding: 10px 0; font-size: .86rem; cursor: pointer; }
+  label.check input { width: 20px; height: 20px; margin: 2px 0 0; flex-shrink: 0; }
+  .row3 { display: flex; gap: 12px; }
+  .row3 > * { flex: 1; min-width: 0; }
+  details.more summary { cursor: pointer; font-size: .86rem; padding: 10px 0; min-height: 44px; }
+  details.more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .stat { background: var(--soft); border-radius: 10px; padding: 12px 14px; }
+  .stat .k { font-size: .78rem; color: var(--muted); }
+  .stat .v { font-size: 1.55rem; font-weight: bold; color: var(--accent-dark); line-height: 1.3; }
+  .stat .v small { font-size: .85rem; font-weight: normal; }
+  .stat .s { font-size: .76rem; color: var(--muted); }
+  .stat.main { background: #e3eee9; border-left: 4px solid var(--accent); }
+  .warn, .err { border-radius: 8px; padding: 9px 12px; font-size: .83rem; margin: 10px 0 0; }
+  .warn { background: var(--warn-bg); color: var(--warn-text); }
+  .err { background: var(--err-bg); color: var(--err-text); }
+  .fine { font-size: .78rem; color: var(--muted); margin: 10px 0 0; }
+  .fine a { color: var(--accent-dark); }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .btn {
+    min-height: 44px; padding: 9px 16px; border-radius: 8px; font-size: .88rem; cursor: pointer;
+    border: 1px solid var(--field-border); background: #fff; color: var(--text); font-family: inherit;
+    text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: bold; }
+  .btn:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+  .status { font-size: .8rem; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
+
+  .teaser { margin-top: 12px; padding: 12px; border: 1px dashed var(--locked); border-radius: 10px; text-align: center; color: var(--muted); font-size: .84rem; }
+  .locked-panel { border: 1px dashed var(--locked); border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); background: #fafaf5; }
+  .locked-panel .feat-list { text-align: left; max-width: 500px; margin: 10px auto; font-size: .85rem; padding-left: 1.2em; }
+  .buy-btn { display: inline-block; margin-top: 8px; background: var(--accent-dark); color: #fff; font-weight: bold; padding: 11px 22px; border-radius: 999px; text-decoration: none; font-size: .9rem; }
+  .buy-btn:hover { background: #17322b; }
+
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 8px; }
+  table.cmp caption { text-align: left; font-size: .8rem; color: var(--muted); padding-bottom: 4px; }
+  table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.cmp th { color: var(--muted); font-weight: normal; font-size: .76rem; }
+  table.cmp td.num { text-align: right; white-space: nowrap; }
+  table.cmp td .sub { display: block; font-size: .74rem; color: var(--muted); }
+  table.cmp tr.current td { background: var(--soft); font-weight: bold; }
+  .table-wrap { overflow-x: auto; }
+  .saved-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .84rem; word-break: break-all; }
+  .saved-item .meta { color: var(--muted); font-size: .76rem; }
+  .saved-item .ops { display: flex; gap: 6px; flex-shrink: 0; }
+  form.save-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  form.save-row input { flex: 1; min-width: 180px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--field-border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
+
+  footer { max-width: 860px; margin: 0 auto; padding: 0 16px 40px; font-size: .78rem; color: var(--muted); }
+  footer a { color: var(--muted); }
+
+  @media (max-width: 560px) {
+    .row3 { flex-direction: column; gap: 0; }
+    section.card { padding: 16px 14px; }
+  }
+  @media print {
+    .btn-row, #pro-section, .teaser, .status, .no-print, #text-section { display: none !important; }
+    body { background: #fff; }
+    section.card { break-inside: avoid; border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>原稿用紙換算・同人小説ページ数計算ツール</h1>
+  <p>本文を貼るか文字数を入れるだけで、原稿用紙(400字詰め)の枚数と、本にしたときのページ数がわかります</p>
+</header>
+
+<main>
+
+  <section class="card" id="text-section">
+    <h2>① 本文または文字数</h2>
+    <div class="tabs" role="radiogroup" aria-label="入力のしかた">
+      <label><input type="radio" name="mode" value="text" checked> 本文を貼り付ける(正確)</label>
+      <label><input type="radio" name="mode" value="count"> 文字数だけ入れる(概算)</label>
+    </div>
+
+    <div id="text-mode">
+      <label class="check" style="padding-top:0;"><input type="checkbox" id="opt-autosave"> 本文をこのブラウザに保存する(次に開いたとき続きから使えます。共用のパソコンではオフのままにしてください)</label>
+      <label for="in-text" class="sr-only">本文</label>
+      <textarea id="in-text" placeholder="ここに本文を貼り付けてください(どこにも送信されません)" spellcheck="false"></textarea>
+      <p class="quick hidden" id="quickSummary" aria-hidden="true"></p>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn" id="clearBtn" type="button">本文を消す</button>
+      </div>
+      <p class="fine" style="margin-top:6px;">改行・空行もそのまま行として数えます。ルビ(｜親文字《ルビ》、漢字《ルビ》)、カクヨムの傍点《《 》》、pixivのタグ([[rb:]]、[chapter:]、[newpage] など)にも対応しています。章の頭で改ページする場合は、そこに [newpage] を入れてください。</p>
+      <p class="fine" id="saveNote" role="status"></p>
+    </div>
+
+    <div id="count-mode" class="hidden">
+      <label class="field">
+        <span class="lbl">文字数</span>
+        <input type="number" id="in-count" value="" min="1" max="10000000" step="1" inputmode="numeric" placeholder="例) 80000">
+      </label>
+      <label class="field">
+        <span class="lbl">改行・会話の多さ</span>
+        <span class="hint">改行で行末が空く分を見込んで計算します(本ツールの仮定の値です)。本文を貼り付けると、この仮定なしで正確に計算できます</span>
+        <select id="in-fill">
+          <option value="0.85">少ない(地の文が中心) — 1ページの約85%が埋まると仮定</option>
+          <option value="0.75" selected>ふつう — 約75%と仮定</option>
+          <option value="0.65">多い(会話・短い行が多い) — 約65%と仮定</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card" id="result-section" tabindex="-1">
+    <h2>② 結果</h2>
+    <p class="sr-only" id="liveSummary" aria-live="polite"></p>
+    <div id="result"></div>
+    <div id="teaser" class="teaser hidden"></div>
+    <div class="btn-row">
+      <button class="btn" id="copyBtn" type="button">結果をテキストでコピー</button>
+      <a class="btn" href="https://uuhai0625.github.io/sehaba-calc/" id="sehabaLink" target="_blank" rel="noopener">このページ数で背幅を計算する(新しいタブ)</a>
+    </div>
+    <div class="status" id="copyStatus" role="status"></div>
+    <p class="fine">ページ数は、段落ごとに1行の字数で折り返した行数から計算した目安です。見出しの大きさ・字下げ・章の頭の改ページ・組版ソフトの禁則の違いで、実際のページ数は前後します。入稿するときは、組んだ原稿のページ数で確認してください。原稿用紙換算は400字詰め(20字×20行)で、改行で余ったマスも1行として数えています。</p>
+  </section>
+
+  <section class="card">
+    <h2>③ 本の版面(1ページの字数・行数)</h2>
+    <label class="field">
+      <span class="lbl">サイズ・組み方</span>
+      <span class="hint">印刷所のコラムで紹介されている例です。迷ったら「文庫・ふつう」のままでOK。自分の設定に合わせて字数・行数を直せます</span>
+      <select id="in-preset"></select>
+    </label>
+    <div class="row3">
+      <label class="field">
+        <span class="lbl">1行の字数</span>
+        <input type="number" id="in-cpl" value="42" min="5" max="80" step="1" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span class="lbl">1ページ(1段)の行数</span>
+        <input type="number" id="in-lpp" value="15" min="3" max="60" step="1" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span class="lbl">段数</span>
+        <select id="in-cols">
+          <option value="1">1段組</option>
+          <option value="2">2段組</option>
+          <option value="3">3段組</option>
+        </select>
+      </label>
+    </div>
+    <label class="field">
+      <span class="lbl">小説以外のページ(扉・目次・あとがき・奥付など)</span>
+      <span class="hint">本文の前後に入るページ数の合計。表紙(表1〜表4)は含めません</span>
+      <input type="number" id="in-extra" value="4" min="0" max="200" step="1" inputmode="numeric">
+    </label>
+    <details class="more">
+      <summary>細かい設定(禁則処理・半角・ルビ・改ページの扱い)</summary>
+      <label class="check"><input type="checkbox" id="opt-kinsoku" checked> 句読点・閉じかっこが行頭に来ないようにする(行末にぶら下げる近似)、開きかっこを行末に置かない</label>
+      <label class="check"><input type="checkbox" id="opt-half"> 半角英数字・半角スペースは2文字で1字として数える</label>
+      <label class="check"><input type="checkbox" id="opt-tags" checked> ルビ・傍点・pixivのタグを取り除いて数える</label>
+      <label class="check"><input type="checkbox" id="opt-newpage" checked> [newpage] の位置で改ページする</label>
+    </details>
+    <div class="err hidden" id="settingsErr" role="alert"></div>
+  </section>
+
+  <section class="card" id="pro-section">
+    <h2>版面の比較・目標ページ数からの逆算・設定の保存 <span class="badge">買い切り版 ¥100</span></h2>
+    <div class="locked-panel">
+      <p>このページの計算機能は無料でそのまま使えます。買い切り版(ダウンロード購入)では、次の機能が増えます:</p>
+      <ul class="feat-list">
+        <li><strong>版面の一括比較</strong>: 文庫・A5二段組・新書など全プリセットで、入稿用のページ数を一覧で比較</li>
+        <li><strong>目標ページ数からの逆算</strong>: 「◯ページに収めたい」ときに、あと何行・どれくらい削ればよいか、どの版面なら収まるかを表示</li>
+        <li><strong>版面の設定の保存</strong>: 自分の版面(字数・行数・段数・小説以外のページ)を名前をつけて保存・呼び出し</li>
+      </ul>
+      <p style="font-size:.8rem;">HTMLファイル1つで届きます。パソコンのブラウザで開いて使ってください(スマホではファイルを開けない機種があります)。オフラインで動きます。</p>
+      <a class="buy-btn" href="https://uuhai0625.booth.pm/items/8930435" id="buyLink" target="_blank" rel="noopener">買い切り版を見る(BOOTH・新しいタブ)</a>
+    </div>
+  </section>
+
+  
+
+</main>
+
+<footer>
+  <p id="privacyNote">本ツールは完全にブラウザ内で動作し、貼り付けた本文はどこにも送信されません。</p>
+  <p>版面のプリセットは、印刷所のコラム(ブックホン「同人小説の1ページあたりの文字数は?」、hope21のコラム等、2026年10月確認)で紹介されている例をもとにしています。計算結果の利用によって生じた損害について責任を負いかねます。</p>
+  <p>同人誌づくりには無料の<a href="https://uuhai0625.github.io/sehaba-calc/" target="_blank" rel="noopener">同人誌 背幅計算ツール</a>・<a href="https://uuhai0625.github.io/insatsu-bussuu-simulator/" target="_blank" rel="noopener">印刷部数シミュレーター</a>・<a href="https://uuhai0625.github.io/doujin-okuzuke-maker/" target="_blank" rel="noopener">同人誌奥付メーカー</a>もどうぞ。<a href="https://uuhai0625.booth.pm/" target="_blank" rel="noopener">他のツールも見る(BOOTHショップ)</a></p>
+  <p>不具合・ご要望は BOOTHメッセージ、または X <a href="https://x.com/uuhai0625" target="_blank" rel="noopener">@uuhai0625</a> まで。</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var EDITION = "free"; // "full" で買い切り完全版
+
+  function esc(s) {
+    return String(s).replace(/[<>&"']/g, function (c) {
+      return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function track(name, params) {
+    if (!window.dataLayer) return;
+    (function () { window.dataLayer.push(arguments); })("event", name, params || {});
+  }
+  var $ = function (id) { return document.getElementById(id); };
+  function fmt(n) { return Number(n).toLocaleString(); }
+  function ceil4(n) { return Math.ceil(n / 4) * 4; }
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function goResult() { var r = $("result-section"); r.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); r.focus({ preventScroll: true }); }
+
+  // ===== 版面プリセット(印刷所のコラムで紹介されている例) =====
+  var PRESETS = [
+    { key: "bunko-std", group: "文庫(A6)1段組", label: "文庫・ふつう 42字×15行", cpl: 42, lpp: 15, cols: 1 },
+    { key: "bunko-38", group: "文庫(A6)1段組", label: "文庫 38字×16行", cpl: 38, lpp: 16, cols: 1 },
+    { key: "bunko-light", group: "文庫(A6)1段組", label: "文庫・文字数少なめ 37字×13行", cpl: 37, lpp: 13, cols: 1 },
+    { key: "bunko-dense", group: "文庫(A6)1段組", label: "文庫・文字数多め 43字×18行", cpl: 43, lpp: 18, cols: 1 },
+    { key: "a5-light", group: "A5 2段組", label: "A5二段組・文字数少なめ 25字×19行", cpl: 25, lpp: 19, cols: 2 },
+    { key: "a5-std", group: "A5 2段組", label: "A5二段組・ふつう 27字×23行", cpl: 27, lpp: 23, cols: 2 },
+    { key: "a5-dense", group: "A5 2段組", label: "A5二段組・文字数多め 30字×24行", cpl: 30, lpp: 24, cols: 2 },
+    { key: "shinsho-16", group: "新書 2段組", label: "新書二段組 23字×16行", cpl: 23, lpp: 16, cols: 2 },
+    { key: "shinsho-18", group: "新書 2段組", label: "新書二段組 23字×18行", cpl: 23, lpp: 18, cols: 2 },
+    { key: "custom", group: "", label: "自分で入力する", cpl: 0, lpp: 0, cols: 0 }
+  ];
+  var elText = $("in-text"), elCount = $("in-count"), elFill = $("in-fill");
+  var elPreset = $("in-preset"), elCpl = $("in-cpl"), elLpp = $("in-lpp"), elCols = $("in-cols"), elExtra = $("in-extra");
+  var optKinsoku = $("opt-kinsoku"), optHalf = $("opt-half"), optTags = $("opt-tags"), optAuto = $("opt-autosave"), optNewpage = $("opt-newpage");
+  (function buildPresetOptions() {
+    var groups = {};
+    PRESETS.forEach(function (p) {
+      var o = document.createElement("option"); o.value = p.key; o.textContent = p.label;
+      if (!p.group) { elPreset.appendChild(o); return; }
+      if (!groups[p.group]) { groups[p.group] = document.createElement("optgroup"); groups[p.group].label = p.group; elPreset.appendChild(groups[p.group]); }
+      groups[p.group].appendChild(o);
+    });
+  })();
+  function mode() { var r = document.querySelector('input[name="mode"]:checked'); return r ? r.value : "text"; }
+
+  // ===== 文字の分割(絵文字・結合文字を1字として扱う) =====
+  var seg = (typeof Intl !== "undefined" && Intl.Segmenter) ? new Intl.Segmenter("ja", { granularity: "grapheme" }) : null;
+  function graphemes(s) {
+    if (!s) return [];
+    if (!seg) return Array.from(s);
+    var out = [];
+    for (var it = seg.segment(s)[Symbol.iterator](), r = it.next(); !r.done; r = it.next()) out.push(r.value.segment);
+    return out;
+  }
+
+  // 行頭に来てはいけない文字(行末にぶら下げる近似)と、行末に来てはいけない文字
+  var HANG = new Set("、。，．,.」』）)】〕〉》］]｝}’”〟！？!?・：；々ゝゞヽヾ".split(""));
+  var OPEN = new Set("「『（(【〔〈《［[｛{‘“〝".split(""));
+  var NEWPAGE = {};
+
+  // 1行ぶんのタグ・ルビを取り除く(どの正規表現も、空白が続く行で極端に遅くならない形にしている)
+  function stripLine(s) {
+    s = s.replace(/\[\[rb:([^>\]\n]{0,200})>[^\]\n]{0,200}\]\]/g, function (m, a) { return a.trim(); });
+    s = s.replace(/\[\[jumpuri:([^>\]\n]{0,200})>[^\]\n]{0,400}\]\]/g, function (m, a) { return a.trim(); });
+    s = s.replace(/\[chapter:([^\]\n]{0,200})\]/g, function (m, a) { return a.trim(); });
+    s = s.replace(/\[(?:pixivimage|uploadedimage):[^\]\n]{0,100}\]/g, "");
+    s = s.replace(/\[jump:\s*\d+\]/g, "");
+    s = s.replace(/《《([^》\n]{0,200})》》/g, "$1");                               // カクヨムの傍点
+    s = s.replace(/[｜|]([^《\n|｜\s]{1,20})《[^》\n]{0,40}》/g, "$1");       // ｜親文字《ルビ》
+    s = s.replace(/([㐀-䶿一-鿿豈-﫿々〆ヵヶ])《[^》\n]{0,40}》/g, "$1"); // 漢字《ルビ》
+    return s;
+  }
+
+  // 本文 → 段落(書記素の配列)の並び。改ページは NEWPAGE で表す
+  function toParas(raw, stripTags, usePageBreak) {
+    var lines = String(raw).replace(/\r\n?/g, "\n").split("\n");
+    var out = [];
+    for (var k = 0; k < lines.length; k++) {
+      var line = lines[k];
+      if (line.indexOf("[newpage]") < 0) { out.push(stripTags ? stripLine(line) : line); continue; }
+      var parts = line.split("[newpage]");
+      for (var i = 0; i < parts.length; i++) {
+        var part = stripTags ? stripLine(parts[i]) : parts[i];
+        if (part !== "") out.push(part);
+        if (i < parts.length - 1 && usePageBreak) out.push(NEWPAGE);
+      }
+      if (!usePageBreak && parts.every(function (x) { return x.trim() === ""; })) { /* タグだけの行は行として数えない */ }
+    }
+    while (out.length && (out[out.length - 1] === NEWPAGE || (typeof out[out.length - 1] === "string" && out[out.length - 1].trim() === ""))) out.pop();
+    return out;
+  }
+
+  function charWidth(g, half) {
+    return half && g.length === 1 && g.charCodeAt(0) >= 0x20 && g.charCodeAt(0) <= 0x7e ? 0.5 : 1;
+  }
+
+  // 1段落を1行cpl字で折り返したときの行数
+  function wrapRows(g, cpl, kinsoku, half) {
+    var n = g.length;
+    if (!n) return 1;
+    var rows = 0, i = 0;
+    while (i < n) {
+      var w = 0, j = i;
+      while (j < n && w + charWidth(g[j], half) <= cpl + 1e-9) { w += charWidth(g[j], half); j++; }
+      if (j === i) j = i + 1;
+      if (kinsoku && j < n) {
+        if (HANG.has(g[j])) { j++; if (j < n && HANG.has(g[j])) j++; }
+        else { var back = 0; while (back < 2 && j - i > 1 && OPEN.has(g[j - 1])) { j--; back++; } }
+      }
+      rows++;
+      i = j;
+    }
+    return rows;
+  }
+
+  // 本文を解析(段落・文字数)。版面ごとの計算で使い回す
+  var parsed = null;
+  function parse() {
+    var key = elText.value + "\u0001" + optTags.checked + optNewpage.checked;
+    if (parsed && parsed.key === key) return parsed;
+    var items = toParas(elText.value, optTags.checked, optNewpage.checked);
+    var paras = [], chars = 0, charsNoSpace = 0, breaks = 0, seenContent = false;
+    for (var k = 0; k < items.length; k++) {
+      if (items[k] === NEWPAGE) { if (seenContent && paras[paras.length - 1] !== null) { paras.push(null); breaks++; } continue; }
+      var g = graphemes(items[k]);
+      chars += g.length;
+      for (var m = 0; m < g.length; m++) if (!/^\s$/.test(g[m])) charsNoSpace++;
+      paras.push(g);
+      seenContent = true;
+    }
+    parsed = { key: key, paras: paras, chars: chars, charsNoSpace: charsNoSpace, breaks: breaks };
+    return parsed;
+  }
+
+  // 版面に流し込んだときのページ数
+  function layout(p, cpl, lpp, cols, kinsoku, half) {
+    var perPage = lpp * cols;
+    var pages = 0, rows = 0, totalRows = 0, lastRows = 0;
+    for (var k = 0; k < p.paras.length; k++) {
+      var g = p.paras[k];
+      if (g === null) { if (rows > 0) { pages += Math.ceil(rows / perPage); rows = 0; } continue; }
+      var r = wrapRows(g, cpl, kinsoku, half);
+      rows += r; totalRows += r;
+    }
+    if (rows > 0) { pages += Math.ceil(rows / perPage); lastRows = rows % perPage || perPage; }
+    return { pages: pages, rows: totalRows, perPage: perPage, lastPageRows: lastRows };
+  }
+
+  function genko(p, kinsoku, half) {
+    var rows = 0;
+    for (var k = 0; k < p.paras.length; k++) if (p.paras[k] !== null) rows += wrapRows(p.paras[k], 20, kinsoku, half);
+    return { rows: rows, sheets: rows / 20 };
+  }
+
+  function readSettings() {
+    function int(el) { var s = String(el.value).trim(); return s === "" ? NaN : Number(s); }
+    return { cpl: int(elCpl), lpp: int(elLpp), cols: Number(elCols.value) || 1, extra: int(elExtra), kinsoku: optKinsoku.checked, half: optHalf.checked };
+  }
+  function validate(st) {
+    var e = [];
+    if (!(Number.isInteger(st.cpl) && st.cpl >= 5 && st.cpl <= 80)) e.push(["in-cpl", "1行の字数を5〜80の整数で入力してください。"]);
+    if (!(Number.isInteger(st.lpp) && st.lpp >= 3 && st.lpp <= 60)) e.push(["in-lpp", "1ページ(1段)の行数を3〜60の整数で入力してください。"]);
+    if (!(Number.isInteger(st.extra) && st.extra >= 0 && st.extra <= 200)) e.push(["in-extra", "小説以外のページを0〜200の整数で入力してください。"]);
+    return e;
+  }
+
+  function presetLabelFor(st) {
+    var p = PRESETS.filter(function (x) { return x.cpl === st.cpl && x.lpp === st.lpp && x.cols === st.cols; })[0];
+    return p ? p.label : st.cpl + "字×" + st.lpp + "行・" + st.cols + "段組";
+  }
+
+  // 文字数モード(本文なし): 1ページの字数×埋まり率(仮定)で概算
+  function estimateFromCount(chars, st, fill) {
+    var perPageChars = st.cpl * st.lpp * st.cols * fill;
+    return { pages: Math.ceil(chars / perPageChars), perPageChars: perPageChars };
+  }
+
+  var last = null, errTimer = null, liveTimer = null, lastLive = "";
+  function setLive(text) {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(function () { if (text !== lastLive) { $("liveSummary").textContent = text; lastLive = text; } }, 1000);
+  }
+  function showSettingsErrors(errs, immediate) {
+    ["in-cpl", "in-lpp", "in-extra"].forEach(function (id) { $(id).removeAttribute("aria-invalid"); $(id).removeAttribute("aria-describedby"); });
+    clearTimeout(errTimer);
+    var box = $("settingsErr");
+    if (!errs.length) { box.classList.add("hidden"); return; }
+    errs.forEach(function (e) { $(e[0]).setAttribute("aria-invalid", "true"); $(e[0]).setAttribute("aria-describedby", "settingsErr"); });
+    errTimer = setTimeout(function () { box.textContent = errs.map(function (e) { return e[1]; }).join(" "); box.classList.remove("hidden"); }, immediate ? 0 : 700);
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    var st = readSettings();
+    var errs = validate(st);
+    showSettingsErrors(errs, opts.immediate);
+    var el = $("result"), quick = $("quickSummary");
+    last = null;
+    var m = mode();
+    if (errs.length) {
+      el.innerHTML = '<p class="err">③の版面の入力を確認してください。</p>';
+      quick.classList.add("hidden"); $("teaser").classList.add("hidden"); setLive("");
+      
+      saveSettings(); return;
+    }
+    var html = "";
+    if (m === "count") {
+      var cs = String(elCount.value).trim(), chars = Number(cs);
+      if (cs === "" || !(Number.isInteger(chars) && chars >= 1 && chars <= 10000000)) {
+        el.innerHTML = '<p class="desc" style="margin:0;">' + (cs === "" ? "①に文字数を入れると、ここに結果が出ます。" : '</p><p class="err">文字数を1〜10,000,000の整数で入力してください。') + "</p>";
+        $("teaser").classList.add("hidden"); setLive("");
+        
+        saveSettings(); return;
+      }
+      var fill = Number(elFill.value) || 0.75;
+      var est = estimateFromCount(chars, st, fill);
+      var total = est.pages + st.extra, printPages = ceil4(total);
+      last = { mode: "count", st: st, chars: chars, fill: fill, bodyPages: est.pages, total: total, printPages: printPages };
+      html += '<div class="stats">';
+      html += '<div class="stat main"><div class="k">入稿用の本文ページ数(表紙を除く・4の倍数)</div><div class="v">約' + fmt(printPages) + '<small> ページ</small></div><div class="s">小説部分 約' + fmt(est.pages) + "P+小説以外" + st.extra + "P=" + fmt(total) + "P" + (printPages > total ? "、白ページ" + (printPages - total) + "P" : "") + "</div></div>";
+      html += '<div class="stat"><div class="k">原稿用紙(400字詰め)・単純計算</div><div class="v">' + (Math.ceil(chars / 400 * 10) / 10).toFixed(1) + '<small> 枚</small></div><div class="s">文字数÷400。改行の余りマスを含めた枚数は本文を貼ると出ます</div></div>';
+      html += '<div class="stat"><div class="k">小説部分のページ数(概算)</div><div class="v">約' + fmt(est.pages) + '<small> ページ</small></div><div class="s">' + esc(presetLabelFor(st)) + "・1ページ約" + fmt(Math.round(est.perPageChars)) + "字で計算</div></div>";
+      html += "</div>";
+      html += '<p class="fine">文字数だけの計算は、1ページの字数×埋まり率(' + Math.round(fill * 100) + "%、本ツールの仮定)で割った概算です。本文を貼り付けると、改行や禁則を反映して正確に計算できます。</p>";
+    } else {
+      var p = parse();
+      if (!p.chars && !p.paras.length) {
+        el.innerHTML = '<p class="desc" style="margin:0;">①に本文を貼り付けると、ここに結果が出ます。</p>';
+        quick.classList.add("hidden"); $("teaser").classList.add("hidden"); setLive("");
+        
+        saveSettings(); return;
+      }
+      var g = genko(p, st.kinsoku, st.half);
+      var lay = layout(p, st.cpl, st.lpp, st.cols, st.kinsoku, st.half);
+      var total2 = lay.pages + st.extra, printPages2 = ceil4(total2);
+      last = { mode: "text", st: st, p: p, g: g, lay: lay, chars: p.chars, bodyPages: lay.pages, total: total2, printPages: printPages2 };
+      var sheets = (Math.ceil(g.sheets * 10) / 10).toFixed(1);
+      html += '<div class="stats">';
+      html += '<div class="stat main"><div class="k">入稿用の本文ページ数(表紙を除く・4の倍数)</div><div class="v">' + fmt(printPages2) + '<small> ページ</small></div><div class="s">小説部分' + fmt(lay.pages) + "P+小説以外" + st.extra + "P=" + fmt(total2) + "P" + (printPages2 > total2 ? "、白ページ" + (printPages2 - total2) + "P" : "") + "</div></div>";
+      html += '<div class="stat"><div class="k">原稿用紙(400字詰め)換算</div><div class="v">' + sheets + '<small> 枚</small></div><div class="s">改行の余りマスも数えて' + fmt(g.rows) + "行。単純計算(文字数÷400)なら" + (Math.ceil(p.chars / 400 * 10) / 10).toFixed(1) + "枚</div></div>";
+      html += '<div class="stat"><div class="k">文字数(改行を除く)</div><div class="v">' + fmt(p.chars) + '<small> 字</small></div><div class="s">空白も除くと ' + fmt(p.charsNoSpace) + " 字</div></div>";
+      html += '<div class="stat"><div class="k">小説部分のページ数</div><div class="v">' + fmt(lay.pages) + '<small> ページ</small></div><div class="s">' + esc(presetLabelFor(st)) + "で" + fmt(lay.rows) + "行</div></div>";
+      html += "</div>";
+      if (p.breaks) html += '<p class="fine">[newpage] が ' + p.breaks + " か所あり、そこで改ページして計算しています(続けて並んだ [newpage] は1回として数えます)。</p>";
+      if (!p.breaks && lay.lastPageRows && lay.lastPageRows < lay.perPage * 0.2 && total2 % 4 === 1) html += '<p class="fine">最後のページは ' + lay.lastPageRows + " 行だけです。あと " + lay.lastPageRows + " 行ほど削ると、入稿用のページ数が4ページ減ります。</p>";
+      quick.innerHTML = fmt(p.chars) + "字・原稿用紙" + sheets + "枚・入稿用" + fmt(printPages2) + "ページ <a href=\"#result-section\">結果を見る</a>";
+      quick.classList.remove("hidden");
+    }
+    html += '<p class="fine">「入稿用の本文ページ数」は表紙を除いた中身全部(小説+扉・あとがき等)です。多くの印刷所は4の倍数で受け付けます(中綴じは必須、無線綴じは2の倍数で受け付ける印刷所もあります)。印刷所によっては表紙4Pを含めた総ページ数で数えるので、入稿先の数え方を確認してください。</p>';
+    if (st.extra === 0) html += '<p class="warn">小説以外のページが0です。扉・目次・あとがき・奥付を入れる場合は③で足してください。</p>';
+    el.innerHTML = html;
+    setLive("入稿用の本文ページ数" + last.printPages + "ページ、小説部分" + last.bodyPages + "ページ");
+    var link = $("sehabaLink");
+    link.href = "https://uuhai0625.github.io/sehaba-calc/?pages=" + Math.max(4, last.printPages);
+    link.textContent = last.printPages + "ページで背幅を計算する(新しいタブ)";
+    renderTeaser();
+    
+    saveSettings();
+  }
+
+  function pagesFor(res, x) {
+    if (res.mode === "count") return estimateFromCount(res.chars, { cpl: x.cpl, lpp: x.lpp, cols: x.cols }, res.fill).pages;
+    return layout(res.p, x.cpl, x.lpp, x.cols, res.st.kinsoku, res.st.half).pages;
+  }
+
+  function renderTeaser() {
+    var tz = $("teaser");
+    if (EDITION === "full" || !last) { tz.classList.add("hidden"); return; }
+    var pages = PRESETS.filter(function (x) { return x.cpl; }).map(function (x) { return ceil4(pagesFor(last, x) + last.st.extra); });
+    tz.classList.remove("hidden");
+    tz.textContent = "同じ原稿でも、版面によって入稿用のページ数は " + Math.min.apply(null, pages) + "〜" + Math.max.apply(null, pages) + "ページと変わります。③のサイズ・組み方を切り替えて確かめられます(全版面の一覧比較・目標ページ数からの逆算は買い切り版で)。";
+  }
+
+  // ===== コピー =====
+  var copyTimer = null;
+  $("copyBtn").addEventListener("click", function () {
+    var status = $("copyStatus");
+    function say(m) { status.textContent = m; clearTimeout(copyTimer); copyTimer = setTimeout(function () { status.textContent = ""; }, 4000); }
+    if (!last) { say("先に本文か文字数を入れてください。"); return; }
+    var lines = ["【原稿のページ数】"];
+    if (last.mode === "text") {
+      lines.push("文字数: " + last.p.chars + "字(空白を除くと" + last.p.charsNoSpace + "字)");
+      lines.push("原稿用紙(400字詰め): " + (Math.ceil(last.g.sheets * 10) / 10).toFixed(1) + "枚(改行の余りマス込み)");
+    } else {
+      lines.push("文字数: " + last.chars + "字(文字数からの概算、埋まり率" + Math.round(last.fill * 100) + "%と仮定)");
+    }
+    lines.push("版面: " + presetLabelFor(last.st));
+    lines.push("小説部分: " + last.bodyPages + "P / 小説以外: " + last.st.extra + "P / 入稿用の本文ページ数(4の倍数): " + last.printPages + "P");
+    lines.push("※目安です。組版ソフトの設定で前後します。");
+    var text = lines.join("\n");
+    function done() { say("コピーしました。"); track("result_copy", { mode: last.mode }); }
+    function fallback() {
+      var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) { say("コピーできませんでした。"); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+  });
+
+  // ===== 保存(設定は常に。本文はチェックが入っているときだけ、本文を編集したときに保存) =====
+  var AUTO_KEY = "genko_page_calc_auto_v1", TEXT_KEY = "genko_page_calc_text_v1";
+  function snapshot() {
+    return { preset: elPreset.value, cpl: elCpl.value, lpp: elLpp.value, cols: elCols.value, extra: elExtra.value,
+      kinsoku: optKinsoku.checked, half: optHalf.checked, tags: optTags.checked, newpage: optNewpage.checked,
+      autosave: optAuto.checked, mode: mode(), count: elCount.value, fill: elFill.value };
+  }
+  function applySnapshot(d, layoutOnly) {
+    if (!d || typeof d !== "object") return;
+    [["cpl", elCpl], ["lpp", elLpp], ["extra", elExtra]].forEach(function (q) { var v = Number(d[q[0]]); if (Number.isInteger(v)) q[1].value = String(v); });
+    elCols.value = ["1", "2", "3"].indexOf(String(d.cols)) >= 0 ? String(d.cols) : elCols.value;
+    if (layoutOnly) return;
+    ["kinsoku", "half", "tags", "newpage", "autosave"].forEach(function (k) {
+      var el = { kinsoku: optKinsoku, half: optHalf, tags: optTags, newpage: optNewpage, autosave: optAuto }[k];
+      if (typeof d[k] === "boolean") el.checked = d[k];
+    });
+    if (d.mode === "count" || d.mode === "text") setMode(d.mode);
+    var c = Number(d.count); if (Number.isInteger(c) && c > 0) elCount.value = String(c);
+    if (["0.85", "0.75", "0.65"].indexOf(d.fill) >= 0) elFill.value = d.fill;
+  }
+  function saveSettings() { try { localStorage.setItem(AUTO_KEY, JSON.stringify(snapshot())); } catch (e) {} }
+  var textSaveTimer = null;
+  function scheduleTextSave() { clearTimeout(textSaveTimer); textSaveTimer = setTimeout(saveText, 600); }
+  function saveText() {
+    var note = $("saveNote");
+    if (!optAuto.checked) { try { localStorage.removeItem(TEXT_KEY); } catch (e) {} note.textContent = ""; return; }
+    try { localStorage.setItem(TEXT_KEY, elText.value); note.textContent = elText.value ? "本文はこのブラウザに保存されています(暗号化はされません)。" : ""; }
+    catch (e) { try { localStorage.removeItem(TEXT_KEY); } catch (e2) {} note.textContent = "本文が長すぎてブラウザに保存できませんでした(計算はできます)。"; }
+  }
+  function restore() {
+    try { applySnapshot(JSON.parse(localStorage.getItem(AUTO_KEY) || "null")); } catch (e) { try { localStorage.removeItem(AUTO_KEY); } catch (e2) {} }
+    try { if (optAuto.checked) { var t = localStorage.getItem(TEXT_KEY); if (typeof t === "string") elText.value = t; } } catch (e) {}
+  }
+  // 別のタブで本文が保存し直されたら知らせる(古い本文で上書きしないため)
+  window.addEventListener("storage", function (e) {
+    if (e.key === TEXT_KEY && optAuto.checked && e.newValue !== null && e.newValue !== elText.value) {
+      $("saveNote").textContent = "別のタブで本文が更新されました。このタブで本文を編集すると、このタブの内容で保存し直されます。";
+    }
+  });
+
+  $("clearBtn").addEventListener("click", function () {
+    if (!elText.value) return;
+    if (!confirm("貼り付けた本文を消しますか?(このブラウザに保存した本文も消えます)")) return;
+    elText.value = ""; try { localStorage.removeItem(TEXT_KEY); } catch (e) {}
+    $("saveNote").textContent = "";
+    render({ immediate: true });
+  });
+
+  function setMode(m) {
+    document.querySelectorAll('input[name="mode"]').forEach(function (r) { r.checked = r.value === m; r.parentNode.classList.toggle("on", r.checked); });
+    $("text-mode").classList.toggle("hidden", m !== "text");
+    $("count-mode").classList.toggle("hidden", m !== "count");
+  }
+  function syncPreset() {
+    var p = PRESETS.filter(function (x) { return x.key === elPreset.value; })[0];
+    if (p && p.cpl) { elCpl.value = p.cpl; elLpp.value = p.lpp; elCols.value = String(p.cols); }
+  }
+  function matchPreset() {
+    var st = readSettings();
+    var p = PRESETS.filter(function (x) { return x.cpl === st.cpl && x.lpp === st.lpp && x.cols === st.cols; })[0];
+    elPreset.value = p ? p.key : "custom";
+  }
+
+  
+
+  if (EDITION !== "full") {
+    $("privacyNote").innerHTML = '貼り付けた本文はどこにも送信されません(保存をオンにしたときだけ、このブラウザ内に保存されます)。このページでは利用状況の把握のためにアクセス解析(Google Analytics)を使っています。<a href="https://policies.google.com/technologies/partner-sites?hl=ja" target="_blank" rel="noopener">Googleによるデータの使用について</a>';
+  }
+
+  // ===== イベント =====
+  var inputTimer = null;
+  elText.addEventListener("input", function () {
+    clearTimeout(inputTimer);
+    inputTimer = setTimeout(function () { render(); }, elText.value.length > 50000 ? 400 : 150);
+    scheduleTextSave();
+  });
+  elCount.addEventListener("input", function () { render(); });
+  elFill.addEventListener("change", function () { render({ immediate: true }); });
+  document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+    r.addEventListener("change", function () { setMode(mode()); render({ immediate: true }); track("input_mode", { mode: mode() }); });
+  });
+  elPreset.addEventListener("change", function () { syncPreset(); render({ immediate: true }); track("preset_select", { preset: elPreset.value }); });
+  [elCpl, elLpp, elExtra].forEach(function (el) {
+    el.addEventListener("input", function () { matchPreset(); render(); });
+    el.addEventListener("blur", function () { render({ immediate: true }); });
+  });
+  elCols.addEventListener("change", function () { matchPreset(); render({ immediate: true }); });
+  [optKinsoku, optHalf, optTags, optNewpage].forEach(function (el) { el.addEventListener("change", function () { parsed = null; render({ immediate: true }); }); });
+  optAuto.addEventListener("change", function () { saveSettings(); saveText(); });
+
+  restore();
+  setMode(mode());
+  matchPreset();
+  render({ immediate: true });
+})();
+</script>
+</body>
+</html>
